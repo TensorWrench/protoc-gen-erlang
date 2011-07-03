@@ -1,0 +1,10 @@
+message nested_enum_msg {
+  enum nested_enum {
+    ia = 1;
+    ib = 2;
+    ic = 3;
+  };
+  required nested_enum req_enum=1;
+  optional nested_enum opt_enum=2;
+  repeated nested_enum rep_enum=3;
+}

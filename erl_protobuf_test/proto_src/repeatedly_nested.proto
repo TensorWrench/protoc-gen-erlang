@@ -1,0 +1,13 @@
+package foo.bar;
+
+message rn_top {
+  message level2 {
+    required int32 placeholder=1;
+    message level3 {
+      required int32 a=1;
+      required int32 b=2;
+    };
+  };
+  required level2.level3 nested=1;
+
+}

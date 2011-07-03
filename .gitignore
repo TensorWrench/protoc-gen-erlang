@@ -1,0 +1,10 @@
+bin
+Debug
+.cproject
+.project
+erl_protobuf_test/.eunit/
+erl_protobuf_test/deps/
+erl_protobuf_test/ebin/
+erl_protobuf_test/src/*.erl
+erl_protobuf_test/include/
+erl_protobuf_test/test/

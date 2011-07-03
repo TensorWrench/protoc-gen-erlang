@@ -1,0 +1,12 @@
+enum external_enum {
+  ea = 1;
+  eb = 2;
+  ec = 3;
+
+}
+
+message external_enum_msg {
+  required external_enum req_enum=1;
+  optional external_enum opt_enum=2;
+  repeated external_enum rep_enum=3;
+}

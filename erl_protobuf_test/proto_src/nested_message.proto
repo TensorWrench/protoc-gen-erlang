@@ -1,0 +1,10 @@
+
+
+message nested_message_outer {
+  message nested_message {
+    required int32 a=1;
+    required int32 b=2;
+  };
+  required nested_message nested=1;
+
+}

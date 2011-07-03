@@ -1,0 +1,72 @@
+
+message all_types_required {
+  required int64 m_int64=1;
+  required int32 m_int32=2;
+
+  required uint64 m_uint64=3;
+  required uint32 m_uint32=4;
+
+  required sint64 m_sint64=5;
+  required sint32 m_sint32=6;
+
+  required fixed64 m_fixed64=7;
+  required fixed32 m_fixed32=8;
+
+  required sfixed64 m_sfixed64=9;
+  required sfixed32 m_xfixed32=10;
+  
+  required double m_double=11;
+  
+  required string m_string=13;
+  required bytes m_bytes=14;
+  
+  required bool m_bool=15;
+}
+
+message all_types_optional {
+  optional int64 m_int64=1;
+  optional int32 m_int32=2;
+
+  optional uint64 m_uint64=3;
+  optional uint32 m_uint32=4;
+
+  optional sint64 m_sint64=5;
+  optional sint32 m_sint32=6;
+
+  optional fixed64 m_fixed64=7;
+  optional fixed32 m_fixed32=8;
+
+  optional sfixed64 m_sfixed64=9;
+  optional sfixed32 m_xfixed32=10;
+  
+  optional double m_double=11;
+  
+  optional string m_string=13;
+  optional bytes m_bytes=14;
+  
+  optional bool m_bool=15;
+}
+
+message all_types_repeated {
+  repeated int64 m_int64=1;
+  repeated int32 m_int32=2;
+
+  repeated uint64 m_uint64=3;
+  repeated uint32 m_uint32=4;
+
+  repeated sint64 m_sint64=5;
+  repeated sint32 m_sint32=6;
+
+  repeated fixed64 m_fixed64=7;
+  repeated fixed32 m_fixed32=8;
+
+  repeated sfixed64 m_sfixed64=9;
+  repeated sfixed32 m_xfixed32=10;
+  
+  repeated double m_double=11;
+  
+  repeated string m_string=13;
+  repeated bytes m_bytes=14;
+  
+  repeated bool m_bool=15;
+}
