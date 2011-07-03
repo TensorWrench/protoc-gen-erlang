@@ -1,0 +1,18 @@
+This is a plug module for google's protoc to produce erlang code.  Currently it's only tested on Ubuntu 10.10 using libprotoc 2.4.1 and Erlang R14, but there's nothing in any of it that should preclude different versions or compilation on Windows.
+
+h2. Features
+* Nested messages and enums within Erlang.
+* Encoding and decoding packed repeated fields.
+* Supports all protobuf language specs.
+* Triq based testing.
+
+
+h2. Installation
+Install development versions of protoc. I compiled from source. The makefile shows how to compile and run the code.  
+Key points:
+* protoc-gen-erlang and protoc have to be in the path.
+* --erlang-out should point the base directory of a standard OTP app and will create files in include, src, and optionally test.
+* --erlang-out=triq_tests:$DIR will create triq based tests to check round trip encode/decode of messages, as well as exported domain functions for every message type.
+* Generated code is dependent on http://github.com/TensorWrench/libprotobuf.git and http://github.com/krestenkrab/triq.git if the optional testing is generated.
+
+The erl_protobuf_test module contains a sampling of .proto files.  Adding any .proto file to it will add it to the test suite.
