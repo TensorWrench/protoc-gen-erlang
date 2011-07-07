@@ -1,9 +1,5 @@
 
-#include <google/protobuf/descriptor.h>
-#include <google/protobuf/io/zero_copy_stream.h>
-#include <google/protobuf/io/printer.h>
-
-#include "ErlangUtils.h"
+#include "ErlangGenerator.h"
 /**
  * notable behaviors:
  * repeated string or bytes that are empty-- [<<>>,<<>>]  encode as a list of zero byte strings/bins
@@ -22,15 +18,20 @@ using google::protobuf::FieldDescriptor;
 using google::protobuf::Descriptor;
 using google::protobuf::io::ZeroCopyOutputStream;
 using google::protobuf::io::Printer;
-namespace {
 
-
-void export_for_enum(Printer& out, const EnumDescriptor* d)
+/**
+ * Creates the exports for enum translation.  Calling functions handle the trailing "," if necessary.
+ */
+void ErlangGenerator::export_for_enum(Printer& out, const EnumDescriptor* d) const
 {
   out.Print("  $to$/1,$from$/1","to",to_enum_name(d),"from",from_enum_name(d));
 }
 
-void export_for_message(Printer& out, const Descriptor* d)
+/*
+ * Exports all of the encode/decode pairs for the messages and nested messages
+ * Calling functions handle the trailing "," if necessary.
+ */
+void ErlangGenerator::export_for_message(Printer& out, const Descriptor* d) const
 {
   for(int i=0; i< d->nested_type_count();++i)
   {
@@ -45,32 +46,28 @@ void export_for_message(Printer& out, const Descriptor* d)
   out.Print("  $encode$/1,$decode$/1","encode",encode_name(d),"decode",decode_name(d));
 }
 
-/* Produces:
- * (3,Val,Rec) -> Rec#'Person'{email=protocol_buffers:cast(string,Val);
- * (4,{length_encoded,Bin},Rec) -> Rec#'Person'{phone = [Rec#'Person'.phone | decode_Person__PhoneNumber(Bin)]}
+/*
+ * Creates the function clauses on the callback to protocol_buffers:decode/3.
+ * Calling functions handle the trailing ";" if necessary.
  */
-void field_to_decode_function(Printer &out, const FieldDescriptor* field)
-{
-  std::stringstream ss;
-  ss << field->number();
-
-  std::map<string,string> vars;
-  vars["id"]=ss.str();
+void ErlangGenerator::field_to_decode_function(Printer &out, const FieldDescriptor* field) const
+{  std::map<string,string> vars;
+  vars["id"]=int_to_string(field->number());
   vars["rec"]=to_atom(normalized_scope(field->containing_type()));
   vars["field"] = to_atom(field->name());
   vars["type"]=string(kTypeToName[field->type()]);
 
-  // handle packed repeated fields
-
   switch (field->type()) {
     case FieldDescriptor::TYPE_STRING:
     case FieldDescriptor::TYPE_BYTES:
+      // No such thing as a packed string/bytes, so we just append/replace multiple instances.
       if(field->is_repeated())
         out.Print(vars,"($id$,Val,#$rec${$field$=F}=Rec) when is_list(F) -> Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [protocol_buffers:cast($type$,Val)]}\n");
       else
         out.Print(vars,"($id$,Val,Rec) -> Rec#$rec${$field$ = protocol_buffers:cast($type$,Val)}");
       break;
     case FieldDescriptor::TYPE_MESSAGE:
+      // No such thing as a packed series of messages, so just append/replace multiple encounters.
       vars["decode"]=decode_name(field->message_type());
       if(field->is_repeated())
         out.Print(vars,"($id$,{length_encoded,Bin},#$rec${$field$=F}=Rec) when is_list(F) -> Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [$decode$(Bin)]}\n");
@@ -78,6 +75,7 @@ void field_to_decode_function(Printer &out, const FieldDescriptor* field)
         out.Print(vars,"($id$,{length_encoded,Bin},Rec) -> Rec#$rec${$field$ = $decode$(Bin)}");
       break;
     case FieldDescriptor::TYPE_ENUM:
+      // As with integer types, but the additional step of to_enum()
       vars["to_enum"]=to_enum_name(field->enum_type());
       if(field->is_repeated())
         out.Print(vars,"($id$,{varint,Enum},#$rec${$field$=F}=Rec) when is_list(F) -> Rec#$rec${$field$=Rec#$rec$.$field$ ++ [$to_enum$(Enum)]}\n");
@@ -101,16 +99,17 @@ void field_to_decode_function(Printer &out, const FieldDescriptor* field)
   }
 }
 
-void encode_decode_for_enum(Printer& out, const EnumDescriptor* d)
+/*
+ * Functions that translate from the atom to integer version of the enum.
+ */
+void ErlangGenerator::encode_decode_for_enum(Printer& out, const EnumDescriptor* d) const
 {
   // to_enum
   for(int enumI=0;enumI < d->value_count();enumI++)
   {
-    std::stringstream ss;
-    ss << d->value(enumI)->number();
     out.Print("$to_enum$($id$) -> $enum$;\n",
         "to_enum",to_enum_name(d),
-        "id",ss.str(),
+        "id",int_to_string(d->value(enumI)->number()),
         "enum",to_atom(d->value(enumI)->name()));
   }
   out.Print("$to_enum$(undefined) -> undefined.\n\n","to_enum",to_enum_name(d));
@@ -118,19 +117,18 @@ void encode_decode_for_enum(Printer& out, const EnumDescriptor* d)
   // from_enum
   for(int enumI=0;enumI < d->value_count();enumI++)
   {
-    std::stringstream ss;
-    ss << d->value(enumI)->number();
     out.Print("$from_enum$($enum$) -> $id$;\n",
         "from_enum",from_enum_name(d),
-        "id",ss.str(),
+        "id",int_to_string(d->value(enumI)->number()),
         "enum",to_atom(d->value(enumI)->name()));
   }
   out.Print("$from_enum$(undefined) -> undefined.\n\n","from_enum",from_enum_name(d));
 
 }
-
-
-void encode_decode_for_message(Printer& out, const Descriptor* d)
+/*
+ * Creates the decoding and encoding aspects of the function.
+ */
+void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* d) const
 {
   for(int i=0; i < d->enum_type_count();++i)
     encode_decode_for_enum(out,d->enum_type(i));
@@ -163,15 +161,14 @@ void encode_decode_for_message(Printer& out, const Descriptor* d)
   for(int i=0; i< d->field_count();++i)
   {
     const FieldDescriptor* field=d->field(i);
-    std::stringstream ss;
-    ss << field->number();
 
     std::map<string,string> vars;
-    vars["id"]=ss.str();
+    vars["id"]=int_to_string(field->number());
     vars["rec"]=to_atom(normalized_scope(field->containing_type()));
     vars["field"] = to_atom(field->name());
     vars["type"]=string(kTypeToName[field->type()]);
     vars["decode"]=decode_name(field->containing_type());
+
     switch(field->type()) {
     case FieldDescriptor::TYPE_ENUM:
       vars["from_enum"]=from_enum_name(field->enum_type());
@@ -205,10 +202,9 @@ void encode_decode_for_message(Printer& out, const Descriptor* d)
   }
   out.PrintRaw("\n  ].\n\n");
 }
-} // anon namespace
 
 
-void generate_source(Printer& out, const FileDescriptor* file)
+void ErlangGenerator::generate_source(Printer& out, const FileDescriptor* file) const
 {
   out.Print("-module($module$).\n"
             "-include(\"$module$.hrl\").\n\n"
@@ -235,7 +231,5 @@ void generate_source(Printer& out, const FileDescriptor* file)
   for(int i=0; i < file->message_type_count();++i) {
     encode_decode_for_message(out,file->message_type(i));
   }
-
-
 }
 }}}} // namespace google::protobuf::compiler::erlang

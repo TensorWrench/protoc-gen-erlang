@@ -4,30 +4,36 @@
  *  Created on: May 2, 2011
  *      Author: jason
  */
-#include <iostream>
-#include <sstream>
-#include <google/protobuf/descriptor.h>
-#include <google/protobuf/io/zero_copy_stream.h>
-#include <google/protobuf/io/printer.h>
-
 #include "ErlangGenerator.h"
-#include "ErlangUtils.h"
 
 namespace google {
 namespace protobuf {
 namespace compiler {
 namespace erlang {
-using google::protobuf::FileDescriptor;
-using google::protobuf::FieldDescriptor;
-using google::protobuf::Descriptor;
-using google::protobuf::io::ZeroCopyOutputStream;
-using google::protobuf::io::Printer;
 
-void generate_source(Printer& out, const FileDescriptor* file);
-void generate_header(Printer& out, const FileDescriptor* file);
-void generate_test(Printer& out, const FileDescriptor* file);
+const char * const ErlangGenerator::kTypeToName[19] = {
+  "ERROR",     // 0 is reserved for errors
+  "double",    // TYPE_DOUBLE
+  "float",     // TYPE_FLOAT
+  "int64",     // TYPE_INT64
+  "uint64",    // TYPE_UINT64
+  "int32",     // TYPE_INT32
+  "fixed64",   // TYPE_FIXED64
+  "fixed32",   // TYPE_FIXED32
+  "bool",      // TYPE_BOOL
+  "string",    // TYPE_STRING
+  "group",     // TYPE_GROUP
+  "message",   // TYPE_MESSAGE
+  "bytes",     // TYPE_BYTES
+  "uint32",    // TYPE_UINT32
+  "enum",      // TYPE_ENUM
+  "sfixed32",  // TYPE_SFIXED32
+  "sfixed64",  // TYPE_SFIXED64
+  "sint32",    // TYPE_SINT32
+  "sint64",    // TYPE_SINT64
+};
 
-ErlangGenerator::ErlangGenerator() {
+ErlangGenerator::ErlangGenerator()   : is_strict_naming(false) {
 }
 
 ErlangGenerator::~ErlangGenerator() {
@@ -43,6 +49,8 @@ bool ErlangGenerator::Generate(const FileDescriptor * file, const string & param
   {
     if("triq_tests" == i->first)
       tests=true;
+    if("stict_naming" == i->first)
+      is_strict_naming=true;
   }
   std::string name=module_name(file);
   std::stringstream out;

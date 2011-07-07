@@ -1,23 +1,66 @@
-#include <iostream>
-#include <sstream>
-#include <google/protobuf/descriptor.h>
-#include <google/protobuf/io/zero_copy_stream.h>
-#include <google/protobuf/io/printer.h>
-
-#include "ErlangUtils.h"
+#include "ErlangGenerator.h"
 
 namespace google {
 namespace protobuf {
 namespace compiler {
 namespace erlang {
 
-using google::protobuf::FileDescriptor;
-using google::protobuf::FieldDescriptor;
-using google::protobuf::Descriptor;
-using google::protobuf::io::ZeroCopyOutputStream;
-using google::protobuf::io::Printer;
-namespace {
-string default_value_for_field(const FieldDescriptor* field)
+/*
+ * The eeps-8 type for this field.
+ */
+const std::string ErlangGenerator::to_erlang_typespec(const FieldDescriptor* fd) const
+{
+  string type(""), end("");
+  if(fd->is_optional())
+    type="'undefined' | ";
+  if(fd->is_repeated())
+  {
+    type="[";
+    end="]";
+  }
+
+  switch(fd->type()) {
+  case FieldDescriptor::TYPE_DOUBLE:
+  case FieldDescriptor::TYPE_FLOAT:
+    return type + "float()" + end;
+
+  case FieldDescriptor::TYPE_UINT32:
+  case FieldDescriptor::TYPE_UINT64:
+  case FieldDescriptor::TYPE_FIXED64:
+  case FieldDescriptor::TYPE_FIXED32:
+    return type + "non_neg_integer()" + end;
+
+  case FieldDescriptor::TYPE_INT64:
+  case FieldDescriptor::TYPE_INT32:
+  case FieldDescriptor::TYPE_SFIXED32:
+  case FieldDescriptor::TYPE_SFIXED64:
+  case FieldDescriptor::TYPE_SINT32:
+  case FieldDescriptor::TYPE_SINT64:
+    return type + "integer()" + end;
+
+  case FieldDescriptor::TYPE_BOOL:
+    return type + "boolean()" + end;
+
+  case FieldDescriptor::TYPE_STRING:
+  case FieldDescriptor::TYPE_BYTES:
+    return type + "binary()" + end;
+
+  case FieldDescriptor::TYPE_GROUP:
+    return type + "any()" + end; // not supporting groups
+
+  case FieldDescriptor::TYPE_MESSAGE:
+    return type + "#" + record_name(fd->message_type()) + "{}" + end;
+
+  case FieldDescriptor::TYPE_ENUM:
+    return type + enum_name(fd->enum_type()) + "()" + end;
+  }
+  return "";
+}
+
+/**
+ * The default value, used by the record.
+ */
+const string ErlangGenerator::default_value_for_field(const FieldDescriptor* field) const
 {
   stringstream ss;
   if (field->is_repeated()) ss << "[";
@@ -57,7 +100,10 @@ string default_value_for_field(const FieldDescriptor* field)
   return ss.str();
 }
 
-void enum_to_typespec(Printer& out, const EnumDescriptor* enum_type)
+/*
+ * Creates an old style edoc and new -type specifier for the record
+ */
+void ErlangGenerator::enum_to_typespec(Printer& out, const EnumDescriptor* enum_type) const
 {
   // edoc specification
   out.Print("%% @type $enum$() = ","enum", enum_name(enum_type));
@@ -79,8 +125,10 @@ void enum_to_typespec(Printer& out, const EnumDescriptor* enum_type)
   out.Print(".\n\n");
 }
 
-
-void message_to_record(Printer& out,const Descriptor* msg)
+/*
+ * Makes the record.
+ */
+void ErlangGenerator::message_to_record(Printer& out,const Descriptor* msg) const
 {
   std::cerr << "Processing " << msg->full_name() << "..." << std::endl;
 
@@ -133,9 +181,8 @@ void message_to_record(Printer& out,const Descriptor* msg)
   out.Print("}).\n\n");
   std::cerr << " done!" <<  std::endl;
 }
-} // anon namespace
 
-void generate_header(Printer& out, const FileDescriptor* file)
+void ErlangGenerator::generate_header(Printer& out, const FileDescriptor* file) const
 {
   for (int i = 0; i < file->enum_type_count(); i++) {
     enum_to_typespec(out,file->enum_type(i));

@@ -1,54 +1,15 @@
 
-#include <google/protobuf/descriptor.h>
-#include <google/protobuf/io/zero_copy_stream.h>
-#include <google/protobuf/io/printer.h>
-
-#include "ErlangUtils.h"
+#include "ErlangGenerator.h"
 
 namespace google {
 namespace protobuf {
 namespace compiler {
 namespace erlang {
 
-using google::protobuf::FileDescriptor;
-using google::protobuf::FieldDescriptor;
-using google::protobuf::Descriptor;
-using google::protobuf::io::ZeroCopyOutputStream;
-using google::protobuf::io::Printer;
-
-//-module(addressbook_pb_tests).
-
-//-include_lib("libprotobuf/include/protocol_buffers_triq.hrl").
-//-include_lib("eunit/include/eunit.hrl").
-//-include("addressbook_pb.hrl").
-//
-//-export([dom_Person__PhoneType/0,dom_Person__PhoneNumber/0]).
-//
-//dom_Person__PhoneType() ->
-//  oneof(['MOBILE','HOME','WORK']).
-//
-//dom_Person__PhoneNumber() ->
-//  #'Person__PhoneNumber'{
-//                        number=string(),
-//                        type=dom_Person__PhoneType()
-//                        }.
-//
-//roundtrip_Person__PhoneNumber_test_() ->
-//    {timeout, 60,
-//     ?_assert(
-//      triq:check(
-//        ?FORALL(R,dom_Person__PhoneNumber(),
-//           begin
-//             Bin = iolist_to_binary(addressbook_pb:encode_Person__PhoneNumber(R)),
-//             %?debugFmt(" vals are R= ~p and decode(Bin)=~p~n",[R,address])
-//             R=:=addressbook_pb:decode_Person__PhoneNumber(Bin)
-//           end
-//        ) % forall
-//      ) % check
-//    )}. % assert
-
-
-void message_export(Printer& out, const Descriptor* d)
+/*
+ * Export for message domains.
+ */
+void ErlangGenerator::message_export(Printer& out, const Descriptor* d) const
 {
   for(int i=0;i < d->enum_type_count();++i)
   {
@@ -62,7 +23,10 @@ void message_export(Printer& out, const Descriptor* d)
   out.Print("$rec$/0","rec",record_domain_name(d));
 }
 
-void enum_domain(Printer& out, const EnumDescriptor* d)
+/*
+ * The triq domain generation for an enum
+ */
+void ErlangGenerator::enum_domain(Printer& out, const EnumDescriptor* d) const
 {
   out.Print("$enum$() -> oneof([","enum",enum_domain_name(d));
   for(int i=0;i<d->value_count();++i)
@@ -74,7 +38,10 @@ void enum_domain(Printer& out, const EnumDescriptor* d)
   out.PrintRaw("]).\n\n");
 }
 
-void message_domain(Printer& out,const Descriptor* d)
+/*
+ * Implementation of message domains.
+ */
+void ErlangGenerator::message_domain(Printer& out,const Descriptor* d) const
 {
   for(int i=0;i < d->enum_type_count();++i)
   {
@@ -114,7 +81,10 @@ void message_domain(Printer& out,const Descriptor* d)
   out.PrintRaw("}.\n\n");
 }
 
-void message_roundtrip(Printer& out, const Descriptor* d)
+/*
+ * The actual test case that encodes a random message, then decodes it.
+ */
+void ErlangGenerator::message_roundtrip(Printer& out, const Descriptor* d) const
 {
   for(int i=0;i < d->nested_type_count();++i)
   {
@@ -143,10 +113,9 @@ void message_roundtrip(Printer& out, const Descriptor* d)
       "      ) % check\n"
       "    )}. % assert\n\n"
       );
-  //roundtrip_Person__PhoneNumber_test_() ->
 }
 
-void generate_test(Printer& out, const FileDescriptor* file)
+void ErlangGenerator::generate_test(Printer& out, const FileDescriptor* file) const
 {
   out.Print("-module($module$_tests).\n"
             "-include_lib(\"libprotobuf/include/protocol_buffers_triq.hrl\").\n"
