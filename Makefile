@@ -16,7 +16,7 @@ ${EXE}: ${SOURCES} ${HEADERS}
 test: ${EXE}
 	-rm -rf output
 	mkdir output
-	PATH=${PATH}:${BIN_DIR} protoc --erlang_out=triq_tests:erl_protobuf_test erl_protobuf_test/proto_src/*.proto
+	PATH=${BIN_DIR}:${PATH} protoc --erlang_out=triq_tests:erl_protobuf_test erl_protobuf_test/proto_src/*.proto
 	cd erl_protobuf_test ; ./rebar compile ; ./rebar eunit skip_deps=true
 
 clean:

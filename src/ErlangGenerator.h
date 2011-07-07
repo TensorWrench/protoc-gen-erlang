@@ -59,13 +59,50 @@ private:
 	void message_roundtrip(Printer& out, const Descriptor* d) const;
 	void generate_test(Printer& out, const FileDescriptor* file) const;
 
-	inline const string to_atom(const string& s) const
+	inline const string to_atom(const string& orig) const
 	{
+	  std::string s;
+
+	  // convert from CamelCase to lower_case if not strict
+	  if(is_strict_naming)
+	  {
+	    s=orig;
+	  } else {
+	    std::stringstream ss;
+
+	    string::const_iterator i=orig.begin();
+	    if(isupper(*i))
+	      ss << (char) tolower(*i);
+	    else
+	      ss << *i;
+	    bool skip_next_underscore=true;
+	    // replace any capital with _ + tolower() after the first
+	    for(++i; i != orig.end(); ++i)
+	    {
+	      if(isupper(*i))
+	      {
+	        if(!skip_next_underscore)
+	          ss <<  "_";
+	        ss << (char) tolower(*i);
+	        skip_next_underscore=true;
+	      }
+	      else
+	      {
+	        ss << *i;
+	        skip_next_underscore=(*i=='_');
+	      }
+
+	    }
+	    s=ss.str();
+	  }
 	  string::const_iterator i = s.begin();
-	  // first character can't be a number or capital
-	  bool quote_free = islower(*i) || *i=='_';
+	  // first character must be a lower or '_' if strict, any alpha or '_' otherwise
+	  bool quote_free = (is_strict_naming?islower(*i):isalpha(*i)) || *i=='_';
+
+	  // look for anything that would force a quote
 	  for(++i;i != s.end() && quote_free; ++i)
-	    quote_free = isalnum(*i) || *i=='_';
+	    quote_free = quote_free || isalnum(*i) || *i=='_';
+
 	  if(quote_free)
 	    return s;
 	  else
@@ -163,12 +200,12 @@ private:
 
 	inline const std::string to_enum_name(const EnumDescriptor* d) const
 	{
-	  return string("to_") + normalized_scope(d->full_name(),d->file()->package());
+	  return to_atom(string("to_") + normalized_scope(d->full_name(),d->file()->package()));
 	}
 
 	inline const std::string from_enum_name(const EnumDescriptor* d) const
 	{
-	  return string("from_") + normalized_scope(d->full_name(),d->file()->package());
+	  return to_atom(string("from_") + normalized_scope(d->full_name(),d->file()->package()));
 	}
 
 	inline const std::string message_test_name(const Descriptor* d) const
