@@ -4,6 +4,7 @@ BIN_DIR := bin
 SOURCES := ${wildcard ${SRC_DIR}/*.cpp} ${wildcard ${SRC_DIR}/*.cc}
 HEADERS := ${wildcard ${SRC_DIR}/*.h}
 EXE := ${BIN_DIR}/protoc-gen-erlang
+INSTALL_DIR := /usr/local/bin
 
 default: ${EXE}
 
@@ -12,13 +13,17 @@ ${EXE}: ${SOURCES} ${HEADERS}
 	g++ -Wall -g -lprotobuf -lprotoc -lpthread -o $@ ${SOURCES}
 	
 	
-run: ${EXE}
+test: ${EXE}
 	-rm -rf output
 	mkdir output
-	PATH=${PATH}:${BIN_DIR} protoc --erlang_out=erl_protobuf_test erl_protobuf_test/proto_src/*.proto
-	cd erl_protobuf_test ; ./rebar eunit skip_deps=true
+	PATH=${PATH}:${BIN_DIR} protoc --erlang_out=triq_tests:erl_protobuf_test erl_protobuf_test/proto_src/*.proto
+	cd erl_protobuf_test ; ./rebar compile ; ./rebar eunit skip_deps=true
 
 clean:
 	-rm -rf ${EXE}
+	-cd erl_protobuf_test ; ./rebar clean
 
-.PHONY: default run clean
+install: 
+	cp ${EXE} ${INSTALL_DIR}
+
+.PHONY: default run clean install
