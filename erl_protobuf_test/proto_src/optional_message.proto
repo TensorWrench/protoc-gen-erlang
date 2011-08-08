@@ -1,0 +1,13 @@
+
+// This exercises a bug in an early release where an optional message
+// that was undefined was decoded as a default record, rather than undefined.
+// i.e.  decode(encode(#outer{msg=undefined})) =:= #outer(msg=#inner{})
+// which is incorrect
+
+message inner {
+  required int32 x=1;
+}
+
+message outer {
+  optional inner msg=1;
+}

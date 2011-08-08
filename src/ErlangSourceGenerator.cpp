@@ -1,5 +1,5 @@
 // Erlang pluging to Protocol Buffers
-// Copyright 2011 Tensor Wrench LLC.  All rights reserved.
+// Copyright 2011 Tensor Wrench LLC.
 // https://github.com/TensorWrench/protoc-gen-erlang
 
 // Redistribution and use in source and binary forms, with or without
@@ -97,7 +97,7 @@ void ErlangGenerator::field_to_decode_function(Printer &out, const FieldDescript
       break;
     case FieldDescriptor::TYPE_MESSAGE:
       // No such thing as a packed series of messages, so just append/replace multiple encounters.
-      vars["decode"]=decode_name(field->message_type());
+      vars["decode"]=decode_impl_name(field->message_type());
       if(field->is_repeated())
         out.Print(vars,"($id$,{length_encoded,Bin},#$rec${$field$=F}=Rec) when is_list(F) -> Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [$decode$(Bin)]}\n");
       else
@@ -166,10 +166,17 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
     encode_decode_for_message(out,d->nested_type(i));
 
   // decode functions
-  out.Print("$function$(Binary) ->\n"
+  out.Print("$function$(B) ->\n"
+            "  case $function_impl$(B) of\n"
+            "    undefined -> #$msg${};\n"
+            "    Any -> Any\n"
+            "  end.\n\n"
+            "$function_impl$(<<>>) -> undefined;\n"
+            "$function_impl$(Binary) ->\n"
             "  protocol_buffers:decode(Binary,#$msg${},\n"
             "     fun",
               "function",decode_name(d),
+              "function_impl",decode_impl_name(d),
               "msg",to_atom(normalized_scope(d)));
 
   for(int i=0; i< d->field_count();++i)
@@ -183,7 +190,8 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
   out.PrintRaw("\n      end).\n\n");
 
   // encode functions
-  out.Print("$function$(R) when is_record(R,$rec$) ->\n"
+  out.Print("$function$(undefined) -> <<>>;\n"
+            "$function$(R) when is_record(R,$rec$) ->\n"
             "  [\n",
               "function",encode_name(d),
               "rec",to_atom(normalized_scope(d)));
@@ -196,7 +204,6 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
     vars["rec"]=to_atom(normalized_scope(field->containing_type()));
     vars["field"] = to_atom(field->name());
     vars["type"]=string(kTypeToName[field->type()]);
-    vars["decode"]=decode_name(field->containing_type());
 
     switch(field->type()) {
     case FieldDescriptor::TYPE_ENUM:
