@@ -1,5 +1,5 @@
 // Erlang pluging to Protocol Buffers
-// Copyright 2011 Tensor Wrench LLC.  All rights reserved.
+// Copyright 2011 Tensor Wrench LLC.
 // https://github.com/TensorWrench/protoc-gen-erlang
 
 // Redistribution and use in source and binary forms, with or without

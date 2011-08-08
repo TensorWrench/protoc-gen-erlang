@@ -1,5 +1,5 @@
 // Erlang pluging to Protocol Buffers
-// Copyright 2011 Tensor Wrench LLC.  All rights reserved.
+// Copyright 2011 Tensor Wrench LLC.
 // https://github.com/TensorWrench/protoc-gen-erlang
 
 // Redistribution and use in source and binary forms, with or without
@@ -215,6 +215,11 @@ private:
 	{
 	  return to_atom(string("decode_") + normalized_scope(d));
 	}
+
+  inline const std::string decode_impl_name(const Descriptor* d) const
+  {
+    return to_atom(string("decode_") + normalized_scope(d)+"_impl");
+  }
 
 	inline const std::string encode_name(const Descriptor* d) const
 	{
