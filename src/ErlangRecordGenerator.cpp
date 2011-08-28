@@ -160,8 +160,6 @@ void ErlangGenerator::enum_to_typespec(Printer& out, const EnumDescriptor* enum_
  */
 void ErlangGenerator::message_to_record(Printer& out,const Descriptor* msg) const
 {
-  std::cerr << "Processing " << msg->full_name() << "..." << std::endl;
-
   for (int i = 0; i < msg->enum_type_count(); i++) {
     enum_to_typespec(out,msg->enum_type(i));
   }
@@ -209,7 +207,6 @@ void ErlangGenerator::message_to_record(Printer& out,const Descriptor* msg) cons
   }
 
   out.Print("}).\n\n");
-  std::cerr << " done!" <<  std::endl;
 }
 
 void ErlangGenerator::generate_header(Printer& out, const FileDescriptor* file) const
