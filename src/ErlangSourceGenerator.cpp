@@ -190,7 +190,7 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
   out.PrintRaw("\n      end).\n\n");
 
   // encode functions
-  out.Print("$function$(undefined) -> <<>>;\n"
+  out.Print("$function$(undefined) -> undefined;\n"
             "$function$(R) when is_record(R,$rec$) ->\n"
             "  [\n",
               "function",encode_name(d),
