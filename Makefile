@@ -23,7 +23,7 @@ clean:
 	-rm -rf ${EXE}
 	-cd erl_protobuf_test ; ./rebar clean
 
-install: 
+install: test
 	cp ${EXE} ${INSTALL_DIR}
 
 .PHONY: default run clean install
