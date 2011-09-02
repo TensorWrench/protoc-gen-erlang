@@ -17,7 +17,7 @@ test: ${EXE}
 	-rm -rf output
 	mkdir output
 	PATH=${BIN_DIR}:${PATH} protoc --erlang_out=triq_tests:erl_protobuf_test erl_protobuf_test/proto_src/*.proto
-	cd erl_protobuf_test ; ./rebar compile ; ./rebar eunit skip_deps=true
+	cd erl_protobuf_test ; ./rebar get-deps ; ./rebar compile ; ./rebar eunit skip_deps=true
 
 clean:
 	-rm -rf ${EXE}
