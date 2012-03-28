@@ -170,24 +170,35 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
             "  case $function_impl$(B) of\n"
             "    undefined -> #$msg${};\n"
             "    Any -> Any\n"
-            "  end.\n\n"
-            "$function_impl$(<<>>) -> undefined;\n"
-            "$function_impl$(Binary) ->\n"
-            "  protocol_buffers:decode(Binary,#$msg${},\n"
-            "     fun",
+            "  end.\n\n",
               "function",decode_name(d),
               "function_impl",decode_impl_name(d),
               "msg",to_atom(normalized_scope(d)));
 
-  for(int i=0; i< d->field_count();++i)
+  if(d->field_count())
   {
-    field_to_decode_function(out,d->field(i));
-    if(i < d->field_count()-1)
+    out.Print("$function_impl$(<<>>) -> undefined;\n"
+              "$function_impl$(Binary) ->\n"
+              "  protocol_buffers:decode(Binary,#$msg${},\n"
+              "     fun",
+                "function_impl",decode_impl_name(d),
+                "msg",to_atom(normalized_scope(d)));
+
+    for(int i=0; i< d->field_count();++i)
     {
-      out.PrintRaw(";\n        ");
+      field_to_decode_function(out,d->field(i));
+      if(i < d->field_count()-1)
+      {
+        out.PrintRaw(";\n        ");
+      }
     }
+    out.PrintRaw("\n      end).\n\n");
   }
-  out.PrintRaw("\n      end).\n\n");
+  else
+  {
+    out.Print("$function_impl$(_) -> undefined.\n\n",
+                "function_impl",decode_impl_name(d));
+  }
 
   // encode functions
   out.Print("$function$(undefined) -> undefined;\n"
