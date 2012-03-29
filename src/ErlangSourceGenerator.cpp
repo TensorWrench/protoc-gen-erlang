@@ -112,6 +112,11 @@ void ErlangGenerator::field_to_decode_function(Printer &out, const FieldDescript
         out.Print(vars,"($id$,{varint,Enum},Rec) -> Rec#$rec${$field$=$to_enum$(Enum)}");
       break;
     case FieldDescriptor::TYPE_GROUP:
+      vars["decode"]=decode_impl_name(field->message_type());
+      if(field->is_repeated())
+        out.Print(vars,"($id$,{group_start,Bin},#$rec${$field$=F}=Rec) when is_list(F) -> {group, Group, Rest} = $decode$(Bin), {Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [Group]}, Rest}\n");
+      else
+        out.Print(vars,"($id$,{group_start,Bin},Rec) -> {group, Group, Rest} = $decode$(Bin), {Rec#$rec${$field$ = Group}, Rest}");
       // not supported
       break;
 
@@ -232,6 +237,13 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
         out.Print(vars,"    [ protocol_buffers:encode($id$,length_encoded,$encode$(X)) || X <- R#$rec$.$field$]");
       else
         out.Print(vars,"    protocol_buffers:encode($id$,length_encoded,$encode$(R#$rec$.$field$))");
+      break;
+    case FieldDescriptor::TYPE_GROUP:
+      vars["encode"]=encode_name(field->message_type());
+      if(field->is_repeated())
+        out.Print(vars,"    [ protocol_buffers:encode($id$,group,$encode$(X)) || X <- R#$rec$.$field$]");
+      else
+        out.Print(vars,"    protocol_buffers:encode($id$,group,$encode$(R#$rec$.$field$))");
       break;
     case FieldDescriptor::TYPE_BYTES:
     case FieldDescriptor::TYPE_STRING:
