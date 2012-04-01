@@ -64,16 +64,18 @@ private:
 	const std::string to_erlang_typespec(const FieldDescriptor* fd) const;
 	const string default_value_for_field(const FieldDescriptor* field) const;
 	void enum_to_typespec(Printer& out, const EnumDescriptor* enum_type) const;
+	void field_for_record(Printer& out, const FieldDescriptor* field) const;
 	void message_to_record(Printer& out,const Descriptor* msg) const;
-	void generate_header(Printer& out, const FileDescriptor* file) const;
+	void generate_header(Printer& out, const FileDescriptor* file, GeneratorContext* context) const;
 
 	// source generation
 	void export_for_enum(Printer& out, const EnumDescriptor* d) const;
 	void export_for_message(Printer& out, const Descriptor* d) const;
 	void field_to_decode_function(Printer &out, const FieldDescriptor* field) const;
+	void field_to_encode_function(Printer &out, const FieldDescriptor* field) const;
 	void encode_decode_for_enum(Printer& out, const EnumDescriptor* d) const;
 	void encode_decode_for_message(Printer& out, const Descriptor* d) const;
-	void generate_source(Printer& out, const FileDescriptor* file) const;
+	void generate_source(Printer& out, const FileDescriptor* file, GeneratorContext* context) const;
 
 	// test generation
 	void message_export(Printer& out, const Descriptor* d) const;

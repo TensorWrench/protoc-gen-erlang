@@ -79,10 +79,16 @@ const std::string ErlangGenerator::to_erlang_typespec(const FieldDescriptor* fd)
     return type + "any()" + end; // not supporting groups
 
   case FieldDescriptor::TYPE_MESSAGE:
-    return type + "#" + record_name(fd->message_type()) + "{}" + end;
+    // Erlang allows only type definitions declared earlier in file(s),
+    // so any() for now
+    //    return type + "#" + record_name(fd->message_type()) + "{}" + end;
+    return type + "any()" + end;
 
   case FieldDescriptor::TYPE_ENUM:
-    return type + enum_name(fd->enum_type()) + "()" + end;
+    // Erlang allows only type definitions declared earlier in file(s),
+    // so any() for now
+    //    return type + enum_name(fd->enum_type()) + "()" + end;
+    return type + "any()" + end;
   }
   return "";
 }
@@ -155,6 +161,19 @@ void ErlangGenerator::enum_to_typespec(Printer& out, const EnumDescriptor* enum_
   out.Print(".\n\n");
 }
 
+void ErlangGenerator::field_for_record(Printer& out, const FieldDescriptor* field) const
+{
+  string fn = field_name(field);
+
+  if (field->has_default_value()) {
+    out.Print("  $field_name$ = $default$ :: $type$", "field_name", fn, "default", default_value_for_field(field),"type",to_erlang_typespec(field));
+  } else if(field->is_repeated()){
+    out.Print("  $field_name$ = [] :: $type$", "field_name", fn,"type",to_erlang_typespec(field));
+  } else {
+    out.Print("  $field_name$ :: $type$" , "field_name",fn,"type", to_erlang_typespec(field));
+  }
+}
+
 /*
  * Makes the record.
  */
@@ -172,6 +191,11 @@ void ErlangGenerator::message_to_record(Printer& out,const Descriptor* msg) cons
 
   out.Print("%% @type $name$() = #$name${\n",
       "name",to_atom(scoped + "_record"));
+
+  if(msg->extension_range_count() > 0)
+    out.Print("%% @@protoc_insertion_point($type$_type)\n",
+	      "type", to_atom(scoped));
+
   for(int j=0; j < msg->field_count();++j)
   {
     const FieldDescriptor* fd=msg->field(j);
@@ -185,22 +209,17 @@ void ErlangGenerator::message_to_record(Printer& out,const Descriptor* msg) cons
   // print the record definition
   out.Print("-record($name$,{","name", to_atom(scoped));
 
-  string fn;
+  if(msg->extension_range_count() > 0)
+    out.Print("\n%% @@protoc_insertion_point($type$)",
+	      "type", to_atom(scoped));
 
   int count = msg->field_count();
   for (int i = 0; i < count; i++) {
     const FieldDescriptor* field = msg->field(i);
-    fn = field_name(field);
 
     out.Print("\n");
 
-    if (field->has_default_value()) {
-      out.Print("  $field_name$ = $default$ :: $type$", "field_name", fn, "default", default_value_for_field(field),"type",to_erlang_typespec(field));
-    } else if(field-> is_repeated()){
-      out.Print("  $field_name$ = [] :: $type$", "field_name", fn,"type",to_erlang_typespec(field));
-    } else {
-      out.Print("  $field_name$ :: $type$" , "field_name",fn,"type", to_erlang_typespec(field));
-    }
+    field_for_record(out, field);
 
     if (i < count-1)
       out.PrintRaw(",");
@@ -209,7 +228,7 @@ void ErlangGenerator::message_to_record(Printer& out,const Descriptor* msg) cons
   out.Print("}).\n\n");
 }
 
-void ErlangGenerator::generate_header(Printer& out, const FileDescriptor* file) const
+void ErlangGenerator::generate_header(Printer& out, const FileDescriptor* file, GeneratorContext* context) const
 {
   for (int i = 0; i < file->enum_type_count(); i++) {
     enum_to_typespec(out,file->enum_type(i));
@@ -217,6 +236,21 @@ void ErlangGenerator::generate_header(Printer& out, const FileDescriptor* file) 
 
   for(int i=0; i < file->message_type_count();++i) {
     message_to_record(out,file->message_type(i));
+  }
+
+  for(int i=0; i < file->extension_count(); ++i) {
+    const FieldDescriptor* d = file->extension(i);
+
+    const string filename = "include/" + module_name(d->containing_type()->file()) + ".hrl";
+
+    scoped_ptr<io::ZeroCopyOutputStream> field_stream(context->OpenForInsert(filename, to_atom(normalized_scope(d->containing_type()))));
+    Printer field_printer(field_stream.get(),'$');
+    field_for_record(field_printer, d);
+    field_printer.PrintRaw(",");
+
+    scoped_ptr<io::ZeroCopyOutputStream> type_stream(context->OpenForInsert(filename, to_atom(normalized_scope(d->containing_type())) + "_type"));
+    Printer type_printer(type_stream.get(),'$');
+    type_printer.Print("%%   $field$() = $type$,","field",to_atom(d->name()),"type",to_erlang_typespec(d));
   }
 }
 }}}} // namespace google::protobuf::compiler::erlang
