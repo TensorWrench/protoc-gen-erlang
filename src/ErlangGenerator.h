@@ -218,14 +218,29 @@ private:
 	  return to_atom(string("decode_") + normalized_scope(d));
 	}
 
-  inline const std::string decode_impl_name(const Descriptor* d) const
-  {
-    return to_atom(string("decode_") + normalized_scope(d)+"_impl");
-  }
-
 	inline const std::string encode_name(const Descriptor* d) const
 	{
 	  return to_atom(string("encode_") + normalized_scope(d));
+	}
+
+	inline const std::string field_by_number_name(const Descriptor* d) const
+	{
+	  return to_atom(string("field_by_num_") + normalized_scope(d));
+	}
+
+	inline const std::string number_by_field_name(const Descriptor* d) const
+	{
+	  return to_atom(string("num_by_field_") + normalized_scope(d));
+	}
+
+	inline const std::string get_field_name(const Descriptor* d) const
+	{
+	  return to_atom(string("get_field_") + normalized_scope(d));
+	}
+
+	inline const std::string set_field_name(const Descriptor* d) const
+	{
+	  return to_atom(string("set_field_") + normalized_scope(d));
 	}
 
 	inline const std::string to_enum_name(const EnumDescriptor* d) const

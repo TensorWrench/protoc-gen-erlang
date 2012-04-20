@@ -65,17 +65,27 @@ void ErlangGenerator::export_for_message(Printer& out, const Descriptor* d) cons
   for(int i=0; i< d->nested_type_count();++i)
   {
     export_for_message(out,d->nested_type(i));
-    out.PrintRaw(",\n");
+    out.PrintRaw(",\n\n");
   }
   for(int i=0; i < d->enum_type_count();++i)
   {
     export_for_enum(out,d->enum_type(i));
-    out.PrintRaw(",\n");
+    out.PrintRaw(",\n\n");
   }
-  out.Print("  $encode$/1, $decode$/1,"
-	    "  $decode_impl$/1",
-	    "encode",encode_name(d),"decode",decode_name(d),
-	    "decode_impl",decode_impl_name(d));
+
+  std::map<string, string> vars;
+  vars["encode"] = encode_name(d);
+  vars["decode"] = decode_name(d);
+  vars["field_by_number"] = field_by_number_name(d);
+  vars["number_by_field"] = number_by_field_name(d);
+  vars["get_field"] = get_field_name(d);
+  vars["set_field"] = set_field_name(d);
+
+  out.Print(vars,
+	    "  $encode$/1, $decode$/1,\n"
+	    "  $decode$/2,\n"
+	    "  $field_by_number$/1, $number_by_field$/1,\n"
+	    "  $get_field$/2, $set_field$/3");
 }
 
 /*
@@ -103,14 +113,21 @@ void ErlangGenerator::field_to_decode_function(Printer &out, const FieldDescript
       // No such thing as a packed series of messages, so just append/replace multiple encounters.
       if(field->file()->name() != field->message_type()->file()->name()) {
 	vars["decode"]=module_name(field->message_type()->file())
-	  + ":" + decode_impl_name(field->message_type());
+	  + ":" + decode_name(field->message_type());
       } else {
-	vars["decode"]=decode_impl_name(field->message_type());
+	vars["decode"]=decode_name(field->message_type());
       }
-      if(field->is_repeated())
-        out.Print(vars,"($id$,{length_encoded,Bin},#$rec${$field$=F}=Rec) when is_list(F) -> Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [$decode$(Bin)]}\n");
-      else
-        out.Print(vars,"($id$,{length_encoded,Bin},Rec) -> Rec#$rec${$field$ = $decode$(Bin)}");
+      if(field->is_repeated()) {
+        out.Print(vars,
+		  "($id$,{length_encoded,Bin},#$rec${$field$=F}=Rec) when is_list(F) andalso _Depth =/= 0 -> Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [$decode$(Bin, _Depth - 1)]};\n"
+		  "        "
+		  "($id$,{length_encoded,Bin},#$rec${$field$=F}=Rec) when is_list(F) -> Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [Bin]}\n");
+      } else {
+        out.Print(vars,
+		  "($id$,{length_encoded,Bin},Rec) when _Depth =/= 0 -> Rec#$rec${$field$ = $decode$(Bin, _Depth - 1)};\n"
+		  "        "
+		  "($id$,{length_encoded,Bin},Rec) -> Rec#$rec${$field$ = Bin}");
+      }
       break;
     case FieldDescriptor::TYPE_ENUM:
       // As with integer types, but the additional step of to_enum()
@@ -126,12 +143,11 @@ void ErlangGenerator::field_to_decode_function(Printer &out, const FieldDescript
         out.Print(vars,"($id$,{varint,Enum},Rec) -> Rec#$rec${$field$=$to_enum$(Enum)}");
       break;
     case FieldDescriptor::TYPE_GROUP:
-      vars["decode"]=decode_impl_name(field->message_type());
+      vars["decode"]=decode_name(field->message_type());
       if(field->is_repeated())
-        out.Print(vars,"($id$,{group_start,Bin},#$rec${$field$=F}=Rec) when is_list(F) -> {group, Group, Rest} = $decode$(Bin), {Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [Group]}, Rest}\n");
+        out.Print(vars,"($id$,{group_start,Bin},#$rec${$field$=F}=Rec) when is_list(F) -> {group, Group, Rest} = $decode$(Bin, _Depth), {Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [Group]}, Rest}\n");
       else
-        out.Print(vars,"($id$,{group_start,Bin},Rec) -> {group, Group, Rest} = $decode$(Bin), {Rec#$rec${$field$ = Group}, Rest}");
-      // not supported
+        out.Print(vars,"($id$,{group_start,Bin},Rec) -> {group, Group, Rest} = $decode$(Bin, _Depth), {Rec#$rec${$field$ = Group}, Rest}");
       break;
 
     default:
@@ -179,7 +195,7 @@ void ErlangGenerator::field_to_encode_function(Printer& out, const FieldDescript
       }
 
       if(field->is_repeated())
-        out.Print(vars,"    [ protocol_buffers:encode($id$,length_encoded,$encode$(X)) || X <- R#$rec$.$field$]");
+        out.Print(vars,"    [protocol_buffers:encode($id$,length_encoded,$encode$(X)) || X <- R#$rec$.$field$]");
       else
         out.Print(vars,"    protocol_buffers:encode($id$,length_encoded,$encode$(R#$rec$.$field$))");
       break;
@@ -242,22 +258,15 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
     encode_decode_for_message(out,d->nested_type(i));
 
   // decode functions
-  out.Print("$function$(B) ->\n"
-            "  case $function_impl$(B) of\n"
-            "    undefined -> #$msg${};\n"
-            "    Any -> Any\n"
-            "  end.\n\n",
-              "function",decode_name(d),
-              "function_impl",decode_impl_name(d),
-              "msg",to_atom(normalized_scope(d)));
-
   if(d->field_count())
   {
-    out.Print("$function_impl$(<<>>) -> undefined;\n"
-              "$function_impl$(Binary) ->\n"
-              "  protocol_buffers:decode(Binary,#$msg${},\n"
+    out.Print("$function$(Binary) ->\n"
+	      "  $function$(Binary, -1).\n"
+	      "$function$(<<>>, _) -> #$msg${};\n"
+              "$function$(Binary, _Depth) ->\n"
+              "  protocol_buffers:decode(Binary, #$msg${},\n"
               "     fun",
-                "function_impl",decode_impl_name(d),
+                "function",decode_name(d),
                 "msg",to_atom(normalized_scope(d)));
 
     for(int i=0; i< d->field_count();++i)
@@ -275,12 +284,14 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
   }
   else
   {
-    out.Print("$function_impl$(_) -> undefined.\n\n",
-                "function_impl",decode_impl_name(d));
+    out.Print("$function$(_) -> undefined.\n"
+	      "$function$(_, _) -> undefined.\n\n",
+                "function",decode_name(d));
   }
 
   // encode functions
   out.Print("$function$(undefined) -> undefined;\n"
+	    "$function$(Bin) when is_binary(Bin) -> Bin;\n"
             "$function$(R) when is_record(R,$rec$) ->\n"
             "  [\n",
               "function",encode_name(d),
@@ -296,6 +307,53 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
     out.Print("\n%%      @@protoc_insertion_point($function$)",
 	    "function", encode_name(d));
   out.PrintRaw("\n  ].\n\n");
+
+
+  for(int i=0; i< d->field_count();++i)
+  {
+    const FieldDescriptor* field = d->field(i);
+    out.Print("$field_by_number$($number$) -> $name$;\n",
+	      "field_by_number", field_by_number_name(d),
+	      "number", int_to_string(field->number()),
+	      "name", to_atom(field->name()));
+  }
+  out.Print("$field_by_number$(_) -> undefined.\n\n",
+	    "field_by_number", field_by_number_name(d));
+
+  for(int i=0; i< d->field_count();++i)
+  {
+    const FieldDescriptor* field = d->field(i);
+    out.Print("$number_by_field$($name$) -> $number$;\n",
+	      "number_by_field", number_by_field_name(d),
+	      "number", int_to_string(field->number()),
+	      "name", to_atom(field->name()));
+  }
+  out.Print("$number_by_field$(_) -> undefined.\n\n",
+	    "number_by_field", number_by_field_name(d));
+
+  for(int i=0; i< d->field_count();++i)
+  {
+    const FieldDescriptor* field = d->field(i);
+    out.Print("$get_field$(Rec, $name$) -> Rec#$rec$.$name$;\n",
+	      "get_field", get_field_name(d),
+	      "rec", to_atom(normalized_scope(d)),
+	      "name", to_atom(field->name()));
+  }
+  out.Print("$get_field$(_, _) -> undefined.\n\n",
+	    "get_field", get_field_name(d));
+
+
+  for(int i=0; i< d->field_count();++i)
+  {
+    const FieldDescriptor* field = d->field(i);
+    out.Print("$set_field$(Rec, $name$, Val) -> Rec#$rec${$name$ = Val};\n",
+	      "set_field", set_field_name(d),
+	      "rec", to_atom(normalized_scope(d)),
+	      "name", to_atom(field->name()));
+  }
+  out.Print("$set_field$(_, _, _) -> exit(badarg).\n\n",
+	    "set_field", set_field_name(d));
+
 }
 
 
@@ -314,7 +372,7 @@ void ErlangGenerator::generate_source(Printer& out, const FileDescriptor* file, 
   for(int i=0; i < file->message_type_count();++i) {
     export_for_message(out,file->message_type(i));
     if(i < file->message_type_count()-1)
-      out.PrintRaw(",\n");
+      out.PrintRaw(",\n\n");
   }
 
   out.PrintRaw("]).\n\n");
@@ -345,9 +403,9 @@ void ErlangGenerator::generate_source(Printer& out, const FileDescriptor* file, 
 
     scoped_ptr<io::ZeroCopyOutputStream> import_stream(context->OpenForInsert(filename, "imports"));
     Printer import_printer(import_stream.get(),'$');
-    import_printer.Print("-import($module$, [$decode_fun$/1, $encode_fun$/1]).\n",
+    import_printer.Print("-import($module$, [$decode_fun$/2, $encode_fun$/1]).\n",
 			 "module", module_name(file),
-			 "decode_fun", decode_impl_name(d->message_type()),
+			 "decode_fun", decode_name(d->message_type()),
 			 "encode_fun", encode_name(d->message_type()));
   }
 }
