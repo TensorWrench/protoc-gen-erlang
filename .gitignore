@@ -2,6 +2,7 @@ bin
 Debug
 .cproject
 .project
+*.i*
 erl_protobuf_test/.eunit/
 erl_protobuf_test/deps/
 erl_protobuf_test/ebin/
