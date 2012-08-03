@@ -97,7 +97,10 @@ void ErlangGenerator::field_to_decode_function(Printer &out, const FieldDescript
       break;
     case FieldDescriptor::TYPE_MESSAGE:
       // No such thing as a packed series of messages, so just append/replace multiple encounters.
-      vars["decode"]=decode_impl_name(field->message_type());
+      if (module_name(field->containing_type()->file()) == module_name(field->message_type()->file()))
+        vars["decode"]=decode_impl_name(field->message_type());
+      else
+        vars["decode"]=decode_msg_name(field->message_type());
       if(field->is_repeated())
         out.Print(vars,"($id$,{length_encoded,Bin},#$rec${$field$=F}=Rec) when is_list(F) -> Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [$decode$(Bin)]}\n");
       else

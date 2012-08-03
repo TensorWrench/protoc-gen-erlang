@@ -164,6 +164,21 @@ private:
 	  }
 	  return out.str();
 	}
+	
+	inline const std::string normalized_module_name(const FileDescriptor* file) const
+	{
+    std::stringstream out;
+    string name = module_name(file);
+    
+    for(string::const_iterator sI=name.begin();sI != name.end(); ++sI)
+	  {
+	    if(*sI == '.')
+	      out << "__";
+	    else
+	      out << *sI;
+	  }
+	  return out.str();
+	}
 
 	inline const std::string normalized_scope(const Descriptor* d) const
 	{
@@ -219,6 +234,11 @@ private:
   inline const std::string decode_impl_name(const Descriptor* d) const
   {
     return to_atom(string("decode_") + normalized_scope(d)+"_impl");
+  }
+  
+  inline const std::string decode_msg_name(const Descriptor* d) const
+  {
+    return to_atom(module_name(d->file()) + string(":") + decode_name(d));
   }
 
 	inline const std::string encode_name(const Descriptor* d) const
