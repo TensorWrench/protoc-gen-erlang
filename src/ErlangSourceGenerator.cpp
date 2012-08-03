@@ -219,7 +219,11 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
       }
       break;
     case FieldDescriptor::TYPE_MESSAGE:
-      vars["encode"]=encode_name(field->message_type());
+      if (module_name(field->containing_type()->file()) == module_name(field->message_type()->file()))
+        vars["encode"]=encode_name(field->message_type());
+      else
+        vars["encode"]=encode_msg(field->message_type());
+
       if(field->is_repeated())
         out.Print(vars,"    [ protocol_buffers:encode($id$,length_encoded,$encode$(X)) || X <- R#$rec$.$field$]");
       else
@@ -245,8 +249,12 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
 
 void ErlangGenerator::generate_source(Printer& out, const FileDescriptor* file) const
 {
-  out.Print("-module($module$).\n"
-            "-include(\"$module$.hrl\").\n\n"
+  out.Print("-module($module$).\n", "module", module_name(file));
+  for(int i=0; i < file->dependency_count();++i) {
+      out.Print("-include(\"$module$.hrl\").\n", "module", module_name(file->dependency(i)));
+  }
+  out.Print("\n");
+  out.Print("-include(\"$module$.hrl\").\n\n"
             "-export([\n"
             ,"module",module_name(file));
   for(int i=0; i < file->enum_type_count();++i)

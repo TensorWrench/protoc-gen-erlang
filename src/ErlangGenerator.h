@@ -202,7 +202,11 @@ private:
 	}
 
 	inline const string field_name(const FieldDescriptor* field)  const {
-	  return to_atom(field->name());
+	  //TODO: Add checks for erlang keywords
+	  if ("end" == field->name() || "begin" == field->name())
+	    return to_atom(field->name() + string("_"));
+	  else
+	    return to_atom(field->name());
 	}
 
 	inline const string field_tag(const FieldDescriptor* field)  const {
@@ -245,6 +249,11 @@ private:
 	{
 	  return to_atom(string("encode_") + normalized_scope(d));
 	}
+
+	inline const std::string encode_msg(const Descriptor* d) const
+    {
+      return to_atom(module_name(d->file()) + string(":") + encode_name(d));
+    }
 
 	inline const std::string to_enum_name(const EnumDescriptor* d) const
 	{
