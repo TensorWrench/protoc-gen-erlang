@@ -97,7 +97,10 @@ void ErlangGenerator::field_to_decode_function(Printer &out, const FieldDescript
       break;
     case FieldDescriptor::TYPE_MESSAGE:
       // No such thing as a packed series of messages, so just append/replace multiple encounters.
-      vars["decode"]=decode_impl_name(field->message_type());
+      if (module_name(field->containing_type()->file()) == module_name(field->message_type()->file()))
+        vars["decode"]=decode_impl_name(field->message_type());
+      else
+        vars["decode"]=decode_msg_name(field->message_type());
       if(field->is_repeated())
         out.Print(vars,"($id$,{length_encoded,Bin},#$rec${$field$=F}=Rec) when is_list(F) -> Rec#$rec${$field$ = Rec#$rec$.$field$ ++ [$decode$(Bin)]}\n");
       else
@@ -105,7 +108,7 @@ void ErlangGenerator::field_to_decode_function(Printer &out, const FieldDescript
       break;
     case FieldDescriptor::TYPE_ENUM:
       // As with integer types, but the additional step of to_enum()
-      vars["to_enum"]=to_enum_name(field->enum_type());
+      vars["to_enum"]=module_name(field->file()) + string(":") + to_enum_name(field->enum_type());
       if(field->is_repeated())
         out.Print(vars,"($id$,{varint,Enum},#$rec${$field$=F}=Rec) when is_list(F) -> Rec#$rec${$field$=Rec#$rec$.$field$ ++ [$to_enum$(Enum)]}\n");
       else
@@ -207,7 +210,7 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
 
     switch(field->type()) {
     case FieldDescriptor::TYPE_ENUM:
-      vars["from_enum"]=from_enum_name(field->enum_type());
+      vars["from_enum"]=module_name(field->file()) + string(":") + from_enum_name(field->enum_type());
       if(field->is_repeated())
       {
         out.Print(vars,"    [protocol_buffers:encode($id$,int32,$from_enum$(X)) || X <- R#$rec$.$field$]");
@@ -216,7 +219,11 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
       }
       break;
     case FieldDescriptor::TYPE_MESSAGE:
-      vars["encode"]=encode_name(field->message_type());
+      if (module_name(field->containing_type()->file()) == module_name(field->message_type()->file()))
+        vars["encode"]=encode_name(field->message_type());
+      else
+        vars["encode"]=encode_msg(field->message_type());
+
       if(field->is_repeated())
         out.Print(vars,"    [ protocol_buffers:encode($id$,length_encoded,$encode$(X)) || X <- R#$rec$.$field$]");
       else
@@ -242,8 +249,12 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
 
 void ErlangGenerator::generate_source(Printer& out, const FileDescriptor* file) const
 {
-  out.Print("-module($module$).\n"
-            "-include(\"$module$.hrl\").\n\n"
+  out.Print("-module($module$).\n", "module", module_name(file));
+  for(int i=0; i < file->dependency_count();++i) {
+      out.Print("-include(\"$module$.hrl\").\n", "module", module_name(file->dependency(i)));
+  }
+  out.Print("\n");
+  out.Print("-include(\"$module$.hrl\").\n\n"
             "-export([\n"
             ,"module",module_name(file));
   for(int i=0; i < file->enum_type_count();++i)

@@ -139,40 +139,45 @@ private:
 	  return out.str();
 	}
 
+	inline const string normalize_string(const string& orig) const
+    {
+        std::stringstream out;
+
+        for(string::const_iterator sI=orig.begin();sI != orig.end(); ++sI)
+        {
+            if(*sI == '.')
+              out << "_";
+            else
+              out << *sI;
+        }
+        return out.str();
+    }
+
 	inline const string file_basename(const string& filename)  const {
 	  return filename.substr(0,filename.find(".proto")).substr(filename.find_last_of('/')+1);
 	}
 
 	inline const string module_name(const FileDescriptor* file)  const {
-	  return to_atom(file_basename(file->name())+"_pb");
+	  return to_atom(normalize_string(file->package().empty() ? "" : file->package() + "_") + file_basename(file->name()) + "_pb");
 	}
 
 	inline const std::string normalized_scope(const string& full_name, const string& package="") const
 	{
-	  std::stringstream out;
 	  string name;
 	  if(!package.empty())
 	    name=full_name.substr(package.size()+1);
 	  else
 	    name=full_name;
-	  for(string::const_iterator sI=name.begin();sI != name.end(); ++sI)
-	  {
-	    if(*sI == '.')
-	      out << "__";
-	    else
-	      out << *sI;
-	  }
-	  return out.str();
+	  return normalize_string(name);
 	}
-
+	
 	inline const std::string normalized_scope(const Descriptor* d) const
 	{
 	  if(is_strict_naming)
 	    return normalized_scope(d->full_name(),d->file()->package());
 	  else
-      return normalized_scope(d->full_name(),d->file()->package());
+        return normalized_scope(d->full_name(),d->file()->package());
 	}
-
 
 	inline const string record_name(const Descriptor* message, const string& prefix="", const string& postfix="")  const {
 	  return to_atom(prefix
@@ -187,7 +192,11 @@ private:
 	}
 
 	inline const string field_name(const FieldDescriptor* field)  const {
-	  return to_atom(field->name());
+	  //TODO: Add checks for erlang keywords
+	  if ("end" == field->name() || "begin" == field->name())
+	    return to_atom(field->name() + string("_"));
+	  else
+	    return to_atom(field->name());
 	}
 
 	inline const string field_tag(const FieldDescriptor* field)  const {
@@ -220,11 +229,21 @@ private:
   {
     return to_atom(string("decode_") + normalized_scope(d)+"_impl");
   }
+  
+  inline const std::string decode_msg_name(const Descriptor* d) const
+  {
+    return to_atom(module_name(d->file()) + string(":") + decode_name(d));
+  }
 
 	inline const std::string encode_name(const Descriptor* d) const
 	{
 	  return to_atom(string("encode_") + normalized_scope(d));
 	}
+
+	inline const std::string encode_msg(const Descriptor* d) const
+    {
+      return to_atom(module_name(d->file()) + string(":") + encode_name(d));
+    }
 
 	inline const std::string to_enum_name(const EnumDescriptor* d) const
 	{
