@@ -108,7 +108,7 @@ void ErlangGenerator::field_to_decode_function(Printer &out, const FieldDescript
       break;
     case FieldDescriptor::TYPE_ENUM:
       // As with integer types, but the additional step of to_enum()
-      vars["to_enum"]=to_enum_name(field->enum_type());
+      vars["to_enum"]=module_name(field->file()) + string(":") + to_enum_name(field->enum_type());
       if(field->is_repeated())
         out.Print(vars,"($id$,{varint,Enum},#$rec${$field$=F}=Rec) when is_list(F) -> Rec#$rec${$field$=Rec#$rec$.$field$ ++ [$to_enum$(Enum)]}\n");
       else
@@ -210,7 +210,7 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
 
     switch(field->type()) {
     case FieldDescriptor::TYPE_ENUM:
-      vars["from_enum"]=from_enum_name(field->enum_type());
+      vars["from_enum"]=module_name(field->file()) + string(":") + from_enum_name(field->enum_type());
       if(field->is_repeated())
       {
         out.Print(vars,"    [protocol_buffers:encode($id$,int32,$from_enum$(X)) || X <- R#$rec$.$field$]");
