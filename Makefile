@@ -1,4 +1,3 @@
-
 SRC_DIR := src
 BIN_DIR := bin
 SOURCES := ${wildcard ${SRC_DIR}/*.cpp} ${wildcard ${SRC_DIR}/*.cc}
@@ -10,7 +9,7 @@ default: ${EXE}
 
 ${EXE}: ${SOURCES} ${HEADERS}
 	mkdir -p ${BIN_DIR}
-	g++ -Wall -g -lprotobuf -lprotoc -lpthread -o $@ ${SOURCES}
+	g++ -Wall -g -o $@ ${SOURCES} -lprotobuf -lprotoc -lpthread
 	
 	
 test: ${EXE}
