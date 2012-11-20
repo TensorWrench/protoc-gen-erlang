@@ -64,16 +64,18 @@ private:
 	const std::string to_erlang_typespec(const FieldDescriptor* fd) const;
 	const string default_value_for_field(const FieldDescriptor* field) const;
 	void enum_to_typespec(Printer& out, const EnumDescriptor* enum_type) const;
+	void field_for_record(Printer& out, const FieldDescriptor* field) const;
 	void message_to_record(Printer& out,const Descriptor* msg) const;
-	void generate_header(Printer& out, const FileDescriptor* file) const;
+	void generate_header(Printer& out, const FileDescriptor* file, GeneratorContext* context) const;
 
 	// source generation
 	void export_for_enum(Printer& out, const EnumDescriptor* d) const;
 	void export_for_message(Printer& out, const Descriptor* d) const;
 	void field_to_decode_function(Printer &out, const FieldDescriptor* field) const;
+	void field_to_encode_function(Printer &out, const FieldDescriptor* field) const;
 	void encode_decode_for_enum(Printer& out, const EnumDescriptor* d) const;
 	void encode_decode_for_message(Printer& out, const Descriptor* d) const;
-	void generate_source(Printer& out, const FileDescriptor* file) const;
+	void generate_source(Printer& out, const FileDescriptor* file, GeneratorContext* context) const;
 
 	// test generation
 	void message_export(Printer& out, const Descriptor* d) const;
@@ -216,14 +218,29 @@ private:
 	  return to_atom(string("decode_") + normalized_scope(d));
 	}
 
-  inline const std::string decode_impl_name(const Descriptor* d) const
-  {
-    return to_atom(string("decode_") + normalized_scope(d)+"_impl");
-  }
-
 	inline const std::string encode_name(const Descriptor* d) const
 	{
 	  return to_atom(string("encode_") + normalized_scope(d));
+	}
+
+	inline const std::string field_by_number_name(const Descriptor* d) const
+	{
+	  return to_atom(string("field_by_num_") + normalized_scope(d));
+	}
+
+	inline const std::string number_by_field_name(const Descriptor* d) const
+	{
+	  return to_atom(string("num_by_field_") + normalized_scope(d));
+	}
+
+	inline const std::string get_field_name(const Descriptor* d) const
+	{
+	  return to_atom(string("get_field_") + normalized_scope(d));
+	}
+
+	inline const std::string set_field_name(const Descriptor* d) const
+	{
+	  return to_atom(string("set_field_") + normalized_scope(d));
 	}
 
 	inline const std::string to_enum_name(const EnumDescriptor* d) const

@@ -82,13 +82,13 @@ bool ErlangGenerator::Generate(const FileDescriptor * file, const string & param
   {
     scoped_ptr<ZeroCopyOutputStream> header(context->Open("include/"+name+".hrl"));
     Printer printer(header.get(),'$');
-    generate_header(printer,file);
+    generate_header(printer,file, context);
   }
 
   {
     scoped_ptr<ZeroCopyOutputStream> source(context->Open("src/"+name+".erl"));
     Printer printer(source.get(),'$');
-    generate_source(printer,file);
+    generate_source(printer,file,context);
   }
 
   if(tests)
