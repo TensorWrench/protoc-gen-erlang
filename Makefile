@@ -10,7 +10,7 @@ default: ${EXE}
 
 ${EXE}: ${SOURCES} ${HEADERS}
 	mkdir -p ${BIN_DIR}
-	g++ -Wall -g -lprotobuf -lprotoc -lpthread -o $@ ${SOURCES}
+	$(CXX) -Wall -g -o $@ ${SOURCES} -lprotobuf -lprotoc -lpthread
 	
 	
 test: ${EXE}
