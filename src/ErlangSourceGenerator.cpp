@@ -231,7 +231,10 @@ void ErlangGenerator::encode_decode_for_message(Printer& out, const Descriptor* 
       break;
 
     default:
-      out.Print(vars,"    protocol_buffers:encode($id$,$type$,R#$rec$.$field$)");
+      if(field->is_repeated())
+        out.Print(vars,"    [ protocol_buffers:encode($id$,$type$,X) || X <- R#$rec$.$field$]");
+      else
+        out.Print(vars,"    protocol_buffers:encode($id$,$type$,R#$rec$.$field$)");
     }
     if(i<d->field_count()-1)
       out.PrintRaw(",\n");
